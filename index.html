@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4a752c">
+<title>Snake - Fortnite Edition</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    font-family: 'Product Sans', 'Google Sans', Arial, sans-serif;
+    background: #fff;
+    color: #202124;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #fafafa;
+  }
+
+  /* ===================== SELECTOR SCREEN ===================== */
+  #selector {
+    width: 100%;
+    max-width: 960px;
+    height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+  }
+  #selector h1 {
+    font-size: 64px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    margin-bottom: 4px;
+    background: linear-gradient(45deg, #4285F4, #EA4335, #FBBC05, #34A853);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+  }
+  #selector .subtitle {
+    font-size: 16px;
+    color: #5f6368;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  #skinGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 80px;
+  }
+  .skin-card {
+    background: #fff;
+    border: 3px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    will-change: transform;
+  }
+  .skin-card:hover {
+    transform: translateY(-2px);
+    border-color: #4285F4;
+  }
+  .skin-card.selected {
+    border-color: #4285F4;
+    box-shadow: 0 0 0 4px rgba(66, 133, 244, 0.25), 0 4px 12px rgba(66, 133, 244, 0.4);
+    transform: translateY(-2px);
+  }
+  .skin-card canvas {
+    width: 100%;
+    height: 80px;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    border-radius: 6px;
+    background: #f1f3f4;
+  }
+  .skin-card .skin-name {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    color: #202124;
+  }
+  #playBtn {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 16px 64px;
+    background: #4285F4;
+    color: white;
+    border: none;
+    border-radius: 32px;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(66, 133, 244, 0.4);
+    transition: transform 0.1s, background 0.15s;
+    letter-spacing: 1px;
+  }
+  #playBtn:hover { background: #3367d6; }
+  #playBtn:active { transform: translateX(-50%) scale(0.96); }
+
+  /* ===================== GAME SCREEN ===================== */
+  #game {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+    padding: 10px;
+  }
+  #scoreBar {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #4a752c;
+    color: white;
+    border-radius: 8px 8px 0 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  #scoreBar .left { display: flex; align-items: center; gap: 8px; }
+  #scoreBar .apple-icon {
+    width: 16px; height: 16px;
+    background: #e23636;
+    border-radius: 50%;
+  }
+  #gameCanvas {
+    border-radius: 0 0 8px 8px;
+    background: #a7d948;
+    display: block;
+    touch-action: none;
+    max-width: 100%;
+    image-rendering: pixelated;
+  }
+
+  /* ===================== GAME OVER ===================== */
+  #gameOver {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  #gameOver .panel {
+    background: white;
+    padding: 32px 28px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    max-width: 90%;
+    width: 360px;
+  }
+  #gameOver h2 {
+    font-size: 32px;
+    margin-bottom: 8px;
+    color: #202124;
+  }
+  #gameOver .final-score {
+    font-size: 48px;
+    font-weight: 900;
+    color: #4285F4;
+    margin: 12px 0;
+  }
+  #gameOver .skin-used {
+    color: #5f6368;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  #gameOver button {
+    width: 100%;
+    padding: 12px;
+    margin: 6px 0;
+    border: none;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  #restartBtn {
+    background: #4285F4;
+    color: white;
+  }
+  #restartBtn:hover { background: #3367d6; }
+  #changeSkinBtn {
+    background: #f1f3f4;
+    color: #202124;
+  }
+  #changeSkinBtn:hover { background: #e0e0e0; }
+
+  @media (max-width: 600px) {
+    #selector h1 { font-size: 48px; }
+    #skinGrid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    #playBtn { padding: 14px 48px; font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ SKIN SELECTOR ============ -->
+<div id="selector">
+  <h1>SNAKE</h1>
+  <div class="subtitle">Choose your Chapter 1 skin</div>
+  <div id="skinGrid"></div>
+  <button id="playBtn">PLAY</button>
+</div>
+
+<!-- ============ GAME ============ -->
+<div id="game">
+  <div id="scoreBar">
+    <div class="left">
+      <div class="apple-icon"></div>
+      <span id="scoreText">0</span>
+    </div>
+    <div id="skinNameDisplay">Default</div>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<!-- ============ GAME OVER ============ -->
+<div id="gameOver">
+  <div class="panel">
+    <h2>Game Over</h2>
+    <div class="final-score" id="finalScore">0</div>
+    <div class="skin-used" id="finalSkin">Default</div>
+    <button id="restartBtn">PLAY AGAIN</button>
+    <button id="changeSkinBtn">CHANGE SKIN</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===================== SKIN DEFINITIONS =====================
+  // Each skin has: name, primary color, secondary color, head color, optional pattern style
+  const SKINS = [
+    { id: 'default',    name: 'Default',         primary: '#5b6770', secondary: '#3a4750', head: '#4a90e2', pattern: 'solid' },
+    { id: 'recon',      name: 'Recon Expert',    primary: '#8b6f47', secondary: '#5d4a2f', head: '#c9a875', pattern: 'stripe' },
+    { id: 'skull',      name: 'Skull Trooper',   primary: '#1a1a1a', secondary: '#ececec', head: '#ffffff', pattern: 'checker' },
+    { id: 'ghoul',      name: 'Ghoul Trooper',   primary: '#5fa84a', secondary: '#3a6b2e', head: '#e07ab8', pattern: 'stripe' },
+    { id: 'renegade',   name: 'Renegade Raider', primary: '#e8862a', secondary: '#a13d1b', head: '#ffb347', pattern: 'stripe' },
+    { id: 'knight',     name: 'Black Knight',    primary: '#2c2c2c', secondary: '#1a1a1a', head: '#8b1a1a', pattern: 'solid' },
+    { id: 'omega',      name: 'Omega',           primary: '#2a1a4a', secondary: '#1a0f30', head: '#5ad8ff', pattern: 'glow' },
+    { id: 'drift',      name: 'Drift',           primary: '#e85a1a', secondary: '#ffffff', head: '#ff9933', pattern: 'stripe' },
+    { id: 'wick',       name: 'John Wick',       primary: '#0d0d0d', secondary: '#2a2a2a', head: '#d4af37', pattern: 'stripe' },
+    { id: 'rust',       name: 'Rust Lord',       primary: '#b85a1a', secondary: '#5d3a1a', head: '#ff8c2a', pattern: 'checker' },
+    { id: 'raptor',     name: 'Raptor',          primary: '#4a5d2a', secondary: '#2a3d1a', head: '#8b6f47', pattern: 'stripe' }
+  ];
+
+  // ===================== SKIN PREVIEW RENDERER =====================
+  function drawSkinPreview(canvas, skin) {
+    const ctx = canvas.getContext('2d');
+    // Internal resolution for crisp pixel art
+    const W = 140, H = 80;
+    canvas.width = W;
+    canvas.height = H;
+    ctx.imageSmoothingEnabled = false;
+
+    // Background
+    ctx.fillStyle = '#f1f3f4';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle grid
+    ctx.strokeStyle = '#e8eaed';
+    ctx.lineWidth = 1;
+    const cell = 10;
+    for (let x = 0; x <= W; x += cell) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y <= H; y += cell) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // S-shape snake body (a curvy path)
+    const path = [
+      [2, 5], [3, 5], [4, 5], [5, 5], [6, 5],
+      [6, 4], [6, 3], [7, 3], [8, 3], [9, 3],
+      [9, 4], [9, 5], [9, 6], [10, 6], [11, 6]
+    ];
+    drawSnakeOnCtx(ctx, path, cell, skin, true);
+
+    // Apple
+    ctx.fillStyle = '#e23636';
+    ctx.beginPath();
+    ctx.arc(12.5 * cell, 6.5 * cell, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawSnakeOnCtx(ctx, path, cell, skin, isPreview) {
+    for (let i = 0; i < path.length; i++) {
+      const [gx, gy] = path[i];
+      const x = gx * cell;
+      const y = gy * cell;
+      const isHead = i === path.length - 1;
+
+      let color = skin.primary;
+      if (skin.pattern === 'stripe' && i % 2 === 1) color = skin.secondary;
+      else if (skin.pattern === 'checker' && (gx + gy) % 2 === 0) color = skin.secondary;
+      else if (skin.pattern === 'glow' && i % 3 === 0) color = skin.head;
+
+      if (isHead) color = skin.head;
+
+      // Glow for Omega
+      if (skin.id === 'omega' && (isHead || i % 2 === 0)) {
+        ctx.shadowColor = skin.head;
+        ctx.shadowBlur = isPreview ? 4 : 8;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+
+      // Head detail: eye
+      if (isHead) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x + cell - 4, y + 3, 2, 2);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(x + cell - 3, y + 3, 1, 1);
+      }
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  // ===================== POPULATE SELECTOR =====================
+  let selectedSkin = SKINS[0];
+  const skinGrid = document.getElementById('skinGrid');
+
+  SKINS.forEach((skin, idx) => {
+    const card = document.createElement('div');
+    card.className = 'skin-card' + (idx === 0 ? ' selected' : '');
+    card.dataset.skinId = skin.id;
+
+    const canvas = document.createElement('canvas');
+    card.appendChild(canvas);
+
+    const name = document.createElement('div');
+    name.className = 'skin-name';
+    name.textContent = skin.name;
+    card.appendChild(name);
+
+    skinGrid.appendChild(card);
+    drawSkinPreview(canvas, skin);
+
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedSkin = skin;
+    });
+  });
+
+  // ===================== GAME LOGIC =====================
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const COLS = 20;
+  const ROWS = 20;
+  let CELL = 24; // computed on resize
+
+  let snake, dir, nextDir, food, score, alive, lastTick, tickInterval, animId;
+
+  function resizeCanvas() {
+    const maxW = Math.min(window.innerWidth - 24, 600);
+    const maxH = window.innerHeight - 80;
+    const size = Math.min(maxW, maxH);
+    CELL = Math.floor(size / COLS);
+    canvas.width = CELL * COLS;
+    canvas.height = CELL * ROWS;
+  }
+
+  function initGame() {
+    resizeCanvas();
+    snake = [
+      { x: 8, y: 10 },
+      { x: 9, y: 10 },
+      { x: 10, y: 10 }
+    ];
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    score = 0;
+    alive = true;
+    tickInterval = 140;
+    spawnFood();
+    updateScoreUI();
+    lastTick = performance.now();
+    if (animId) cancelAnimationFrame(animId);
+    loop(lastTick);
+  }
+
+  function spawnFood() {
+    while (true) {
+      const fx = Math.floor(Math.random() * COLS);
+      const fy = Math.floor(Math.random() * ROWS);
+      let collide = false;
+      for (let i = 0; i < snake.length; i++) {
+        if (snake[i].x === fx && snake[i].y === fy) { collide = true; break; }
+      }
+      if (!collide) { food = { x: fx, y: fy }; return; }
+    }
+  }
+
+  function updateScoreUI() {
+    document.getElementById('scoreText').textContent = score;
+    document.getElementById('skinNameDisplay').textContent = selectedSkin.name;
+  }
+
+  function step() {
+    dir = nextDir;
+    const head = snake[snake.length - 1];
+    const nx = head.x + dir.x;
+    const ny = head.y + dir.y;
+
+    // Wall collision
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) {
+      return gameOver();
+    }
+    // Self collision
+    for (let i = 0; i < snake.length; i++) {
+      if (snake[i].x === nx && snake[i].y === ny) return gameOver();
+    }
+
+    snake.push({ x: nx, y: ny });
+
+    // Eat food
+    if (nx === food.x && ny === food.y) {
+      score++;
+      spawnFood();
+      // Speed up gradually
+      tickInterval = Math.max(60, 140 - score * 2);
+      updateScoreUI();
+    } else {
+      snake.shift();
+    }
+  }
+
+  function draw() {
+    // Background: alternating checker (Google Snake style)
+    const lightA = '#aad751';
+    const lightB = '#a2d149';
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        ctx.fillStyle = (x + y) % 2 === 0 ? lightA : lightB;
+        ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+      }
+    }
+
+    // Food (apple)
+    const fx = food.x * CELL + CELL / 2;
+    const fy = food.y * CELL + CELL / 2;
+    const r = CELL * 0.4;
+    ctx.fillStyle = '#e23636';
+    ctx.beginPath();
+    ctx.arc(fx, fy, r, 0, Math.PI * 2);
+    ctx.fill();
+    // Leaf
+    ctx.fillStyle = '#4a7c2e';
+    ctx.beginPath();
+    ctx.ellipse(fx + r * 0.4, fy - r * 0.9, r * 0.3, r * 0.15, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Snake
+    for (let i = 0; i < snake.length; i++) {
+      const seg = snake[i];
+      const isHead = i === snake.length - 1;
+      const x = seg.x * CELL;
+      const y = seg.y * CELL;
+
+      let color = selectedSkin.primary;
+      if (selectedSkin.pattern === 'stripe' && i % 2 === 1) color = selectedSkin.secondary;
+      else if (selectedSkin.pattern === 'checker' && (seg.x + seg.y) % 2 === 0) color = selectedSkin.secondary;
+      else if (selectedSkin.pattern === 'glow' && i % 3 === 0) color = selectedSkin.head;
+
+      if (isHead) color = selectedSkin.head;
+
+      // Omega glow
+      if (selectedSkin.id === 'omega' && (isHead || i % 2 === 0)) {
+        ctx.shadowColor = selectedSkin.head;
+        ctx.shadowBlur = 10;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      // Rounded body
+      const pad = Math.max(1, CELL * 0.08);
+      ctx.fillStyle = color;
+      roundRect(ctx, x + pad, y + pad, CELL - pad * 2, CELL - pad * 2, CELL * 0.18);
+      ctx.fill();
+
+      if (isHead) {
+        ctx.shadowBlur = 0;
+        // Eyes - direction aware
+        ctx.fillStyle = '#fff';
+        const eyeSize = Math.max(3, CELL * 0.18);
+        let eye1x, eye1y, eye2x, eye2y;
+        if (dir.x === 1) {
+          eye1x = x + CELL * 0.65; eye1y = y + CELL * 0.25;
+          eye2x = x + CELL * 0.65; eye2y = y + CELL * 0.60;
+        } else if (dir.x === -1) {
+          eye1x = x + CELL * 0.20; eye1y = y + CELL * 0.25;
+          eye2x = x + CELL * 0.20; eye2y = y + CELL * 0.60;
+        } else if (dir.y === -1) {
+          eye1x = x + CELL * 0.25; eye1y = y + CELL * 0.20;
+          eye2x = x + CELL * 0.60; eye2y = y + CELL * 0.20;
+        } else {
+          eye1x = x + CELL * 0.25; eye1y = y + CELL * 0.65;
+          eye2x = x + CELL * 0.60; eye2y = y + CELL * 0.65;
+        }
+        ctx.fillRect(eye1x, eye1y, eyeSize, eyeSize);
+        ctx.fillRect(eye2x, eye2y, eyeSize, eyeSize);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(eye1x + eyeSize * 0.3, eye1y + eyeSize * 0.3, eyeSize * 0.5, eyeSize * 0.5);
+        ctx.fillRect(eye2x + eyeSize * 0.3, eye2y + eyeSize * 0.3, eyeSize * 0.5, eyeSize * 0.5);
+      }
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+
+  function loop(now) {
+    if (!alive) return;
+    animId = requestAnimationFrame(loop);
+    if (now - lastTick >= tickInterval) {
+      lastTick = now;
+      step();
+      if (!alive) return;
+    }
+    draw();
+  }
+
+  function gameOver() {
+    alive = false;
+    cancelAnimationFrame(animId);
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('finalSkin').textContent = 'Skin: ' + selectedSkin.name;
+    document.getElementById('gameOver').style.display = 'flex';
+  }
+
+  // ===================== CONTROLS =====================
+  function setDir(dx, dy) {
+    // No 180-degree turns
+    if (dx === -dir.x && dy === -dir.y) return;
+    if (dx === dir.x && dy === dir.y) return;
+    nextDir = { x: dx, y: dy };
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w')         { setDir(0, -1); e.preventDefault(); }
+    else if (k === 'arrowdown' || k === 's')  { setDir(0,  1); e.preventDefault(); }
+    else if (k === 'arrowleft' || k === 'a')  { setDir(-1, 0); e.preventDefault(); }
+    else if (k === 'arrowright' || k === 'd') { setDir(1,  0); e.preventDefault(); }
+  });
+
+  // Touch swipe
+  let touchStartX = 0, touchStartY = 0, touchActive = false;
+  canvas.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchActive = true;
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+
+  canvas.addEventListener('touchend', (e) => {
+    if (!touchActive) return;
+    touchActive = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
+    else setDir(0, dy > 0 ? 1 : -1);
+  }, { passive: false });
+
+  window.addEventListener('resize', () => {
+    if (document.getElementById('game').style.display === 'flex') {
+      resizeCanvas();
+      draw();
+    }
+  });
+
+  // ===================== SCREEN TRANSITIONS =====================
+  document.getElementById('playBtn').addEventListener('click', () => {
+    document.getElementById('selector').style.display = 'none';
+    document.getElementById('game').style.display = 'flex';
+    initGame();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    document.getElementById('gameOver').style.display = 'none';
+    initGame();
+  });
+
+  document.getElementById('changeSkinBtn').addEventListener('click', () => {
+    document.getElementById('gameOver').style.display = 'none';
+    document.getElementById('game').style.display = 'none';
+    document.getElementById('selector').style.display = 'flex';
+  });
+
+})();
+</script>
+</body>
+</html>
