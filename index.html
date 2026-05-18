@@ -303,40 +303,83 @@ function playEat() {
     const a = ac();
     const osc = a.createOscillator(), g = a.createGain();
     osc.connect(g); g.connect(a.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, a.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1300, a.currentTime + 0.07);
-    g.gain.setValueAtTime(0.22, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.12);
-    osc.start(); osc.stop(a.currentTime + 0.12);
+    osc.type = 'square';
+    const now = a.currentTime;
+    osc.frequency.setValueAtTime(1050, now);
+    osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+    g.gain.setValueAtTime(0.3, now);
+    g.gain.linearRampToValueAtTime(0.3, now + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.287);
+    osc.start(now); osc.stop(now + 0.287);
   } catch(e) {}
 }
 
 function playDeath() {
   try {
     const a = ac();
-    const bufSize = Math.floor(a.sampleRate * 0.45);
-    const buf = a.createBuffer(1, bufSize, a.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < bufSize; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/bufSize, 1.5);
-    const src = a.createBufferSource();
-    src.buffer = buf;
-    const flt = a.createBiquadFilter();
-    flt.type = 'bandpass'; flt.frequency.setValueAtTime(350, a.currentTime);
-    flt.frequency.exponentialRampToValueAtTime(80, a.currentTime + 0.45);
-    const g = a.createGain();
-    g.gain.setValueAtTime(0.5, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.45);
-    src.connect(flt); flt.connect(g); g.connect(a.destination);
-    src.start();
-    const osc = a.createOscillator(), g2 = a.createGain();
-    osc.connect(g2); g2.connect(a.destination);
+    const notes = [294,277,262,247,233,220,208,196,185,175,165,156,147,139,131,123,117,110,104,98,92,87];
+    const totalDuration = 0.6;
+    const noteSpacing = totalDuration / notes.length;
+    const noteDuration = noteSpacing * 0.8;
+    const now = a.currentTime;
+    notes.forEach((freq, i) => {
+      const osc = a.createOscillator(), g = a.createGain();
+      osc.connect(g); g.connect(a.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, now);
+      const start = now + i * noteSpacing;
+      g.gain.setValueAtTime(0.001, start);
+      g.gain.linearRampToValueAtTime(0.3, start + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, start + noteDuration);
+      osc.start(start); osc.stop(start + noteDuration);
+    });
+  } catch(e) {}
+}
+
+function playMove() {
+  try {
+    const a = ac();
+    const osc = a.createOscillator(), g = a.createGain();
+    osc.connect(g); g.connect(a.destination);
     osc.type = 'square';
-    osc.frequency.setValueAtTime(380, a.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(60, a.currentTime + 0.45);
-    g2.gain.setValueAtTime(0.12, a.currentTime);
-    g2.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.45);
-    osc.start(); osc.stop(a.currentTime + 0.45);
+    const now = a.currentTime;
+    osc.frequency.setValueAtTime(820, now);
+    osc.frequency.exponentialRampToValueAtTime(410, now + 0.04);
+    g.gain.setValueAtTime(0.08, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.start(now); osc.stop(now + 0.08);
+  } catch(e) {}
+}
+
+function playDeath() {
+  try {
+    const a = ac();
+    const t = a.currentTime;
+    // Chromatic descent: D4 → C#4 → C4 → B3 → A#3 → A3 → G#3 → G3 →
+    //                    F#3 → F3 → E3 → D#3 → D3 → C#3 → C3 → B2 → A2 → G2 → F2 → E2 → D2 → C2
+    // Total duration ~627ms, step ~28ms each, 22 notes
+    const notes = [
+      294, 277, 261, 247, 233, 220, 208, 196,
+      185, 175, 165, 156, 147, 139, 131, 123,
+      117, 110, 104,  98,  92,  87
+    ];
+    const stepDur  = 0.627 / notes.length; // ~28 ms per note
+    const noteDur  = stepDur * 1.6;        // slight overlap so notes blend
+
+    notes.forEach((freq, i) => {
+      const nt = t + i * stepDur;
+
+      const osc = a.createOscillator();
+      const ng  = a.createGain();
+      osc.connect(ng); ng.connect(a.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, nt);
+      // Each note: fast attack, decay to silence
+      ng.gain.setValueAtTime(0.0001, nt);
+      ng.gain.linearRampToValueAtTime(0.14, nt + 0.004);
+      ng.gain.exponentialRampToValueAtTime(0.001, nt + noteDur);
+      osc.start(nt); osc.stop(nt + noteDur + 0.01);
+    });
   } catch(e) {}
 }
 
@@ -370,19 +413,19 @@ document.getElementById('musicBtn').addEventListener('click', () => {
 // ── GAME ──────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const COLS = 17, ROWS = 17;
+const COLS = 17, ROWS = 15;
 let CELL = 30;
 
-let snake, prevSnake, dir, nextDir, food, score, alive, lastTick, tickInterval, animId;
+let snake, prevSnake, dir, nextDir, dirQueue, food, score, alive, lastTick, tickInterval, animId;
 
 function resizeCanvas() {
   const barH = 44;
   const maxW = Math.min(window.innerWidth - 8, 600);
   const maxH = window.innerHeight - barH - 16;
-  CELL = Math.floor(Math.min(maxW, maxH) / COLS);
-  const sz = CELL * COLS;
-  canvas.width = sz; canvas.height = sz;
-  document.getElementById('scoreBar').style.width = sz + 'px';
+  CELL = Math.floor(Math.min(maxW / COLS, maxH / ROWS));
+  canvas.width  = CELL * COLS;
+  canvas.height = CELL * ROWS;
+  document.getElementById('scoreBar').style.width = (CELL * COLS) + 'px';
 }
 
 function initGame() {
@@ -391,8 +434,8 @@ function initGame() {
   const mx = Math.floor(COLS/2), my = Math.floor(ROWS/2);
   snake = [{x:mx-2,y:my},{x:mx-1,y:my},{x:mx,y:my}];
   prevSnake = snake.map(s => ({...s}));
-  dir = {x:1,y:0}; nextDir = {x:1,y:0};
-  score = 0; alive = true; tickInterval = 150;
+  dir = {x:1,y:0}; nextDir = {x:1,y:0}; dirQueue = [];
+  score = 0; alive = true; tickInterval = 125;
   spawnFood();
   updateScoreUI();
   lastTick = performance.now();
@@ -415,7 +458,7 @@ function updateScoreUI() {
 
 function step() {
   prevSnake = snake.map(s => ({x:s.x, y:s.y}));
-  dir = nextDir;
+  if (dirQueue.length > 0) dir = dirQueue.shift();
   const head = snake[snake.length-1];
   const nx = head.x + dir.x, ny = head.y + dir.y;
   if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) { playDeath(); return gameOver(); }
@@ -427,7 +470,7 @@ function step() {
     score++;
     playEat();
     spawnFood();
-    tickInterval = Math.max(80, 150 - score*3);
+    tickInterval = Math.max(75, 125 - score*3);
     updateScoreUI();
   } else {
     snake.shift();
@@ -531,15 +574,16 @@ function gameOver() {
 
 // ── CONTROLS ──────────────────────────────────────────────────────────────
 function setDir(dx, dy) {
-  if (dx === -nextDir.x && dy === -nextDir.y) return;
-  nextDir = {x:dx, y:dy};
+  const last = dirQueue.length > 0 ? dirQueue[dirQueue.length - 1] : dir;
+  if (dx === -last.x && dy === -last.y) return;
+  if (dirQueue.length < 2) dirQueue.push({x:dx, y:dy});
 }
 
 window.addEventListener('keydown', e => {
-  if      (e.key==='ArrowUp'    || e.key==='w' || e.key==='W') { setDir(0,-1);  e.preventDefault(); }
-  else if (e.key==='ArrowDown'  || e.key==='s' || e.key==='S') { setDir(0, 1);  e.preventDefault(); }
-  else if (e.key==='ArrowLeft'  || e.key==='a' || e.key==='A') { setDir(-1, 0); e.preventDefault(); }
-  else if (e.key==='ArrowRight' || e.key==='d' || e.key==='D') { setDir(1,  0); e.preventDefault(); }
+  if      (e.key==='ArrowUp'    || e.key==='w' || e.key==='W') { setDir(0,-1);  playMove(); e.preventDefault(); }
+  else if (e.key==='ArrowDown'  || e.key==='s' || e.key==='S') { setDir(0, 1);  playMove(); e.preventDefault(); }
+  else if (e.key==='ArrowLeft'  || e.key==='a' || e.key==='A') { setDir(-1, 0); playMove(); e.preventDefault(); }
+  else if (e.key==='ArrowRight' || e.key==='d' || e.key==='D') { setDir(1,  0); playMove(); e.preventDefault(); }
 });
 
 let tx0 = 0, ty0 = 0;
@@ -550,6 +594,7 @@ canvas.addEventListener('touchend',   e => {
   if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
   if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
   else setDir(0, dy > 0 ? 1 : -1);
+  playMove();
 }, {passive:false});
 
 window.addEventListener('resize', () => {
